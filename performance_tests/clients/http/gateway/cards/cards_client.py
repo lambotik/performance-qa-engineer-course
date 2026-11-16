@@ -9,6 +9,7 @@ from performance_tests.clients.http.client import HTTPClient, build_gateway_http
 from performance_tests.clients.http.gateway.cards.schema import IssuePhysicalCardRequestSchema, \
     IssueVirtualCardRequestSchema
 from services.gateway.apps.cards.schema.cards import IssueVirtualCardResponseSchema, IssuePhysicalCardResponseSchema
+from performance_tests.tools.routes import APIRoutes
 
 
 class CardsGatewayHTTPClient(HTTPClient):
@@ -21,7 +22,7 @@ class CardsGatewayHTTPClient(HTTPClient):
         :return: Ответ от сервера (объект httpx.Response).
         """
         return self.post(
-            "/api/v1/cards/issue-virtual-card",
+            f"{APIRoutes.CARDS}/issue-virtual-card",
             json=request.model_dump(mode='json', by_alias=True)
         )
         # mode='json' гарантирует, что все UUID, datetime и т.д.
@@ -35,7 +36,7 @@ class CardsGatewayHTTPClient(HTTPClient):
         :return: Ответ от сервера (объект httpx.Response).
         """
         return self.post(
-            "/api/v1/cards/issue-physical-card",
+            f"{APIRoutes.CARDS}/issue-physical-card",
             json=request.model_dump(mode='json', by_alias=True)
         )
 

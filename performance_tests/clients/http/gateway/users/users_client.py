@@ -1,4 +1,3 @@
-import time
 from uuid import UUID
 
 from httpx import Response
@@ -12,6 +11,7 @@ from performance_tests.clients.http.client import (
 )
 from performance_tests.clients.http.gateway.users.schema import CreateUserResponseSchema, CreateUserRequestSchema, User
 from services.users.apps.users.schema.users import GetUserResponseSchema
+from performance_tests.tools.routes import APIRoutes
 
 
 class UsersGatewayHTTPClient(HTTPClient):
@@ -28,8 +28,8 @@ class UsersGatewayHTTPClient(HTTPClient):
         """
 
         return self.get(
-            f"/api/v1/users/{user_id}",
-            extensions=HTTPClientExtensions(route="/api/v1/users/{user_id}")  # Явно передаём логическое имя маршрута
+            f"{APIRoutes.USERS}/{user_id}",
+            extensions=HTTPClientExtensions(route=f"{APIRoutes.USERS}/{{user_id}}")
         )
 
     def create_user_api(self, request: CreateUserRequestSchema) -> Response:
@@ -39,7 +39,7 @@ class UsersGatewayHTTPClient(HTTPClient):
         :param request: Словарь с данными нового пользователя.
         :return: Ответ от сервера (объект httpx.Response).
         """
-        return self.post("/api/v1/users", json=request.model_dump())
+        return self.post(APIRoutes.USERS, json=request.model_dump(mode='json', by_alias=True))
 
     def get_user(self, user_id: str | UUID) -> GetUserResponseSchema:
         response = self.get_user_api(user_id)

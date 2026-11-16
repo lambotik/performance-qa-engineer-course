@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+#Locust
+report.html
+
 # Distribution / packaging
 .Python
 build/
@@ -22,6 +25,7 @@ var/
 wheels/
 share/python-wheels/
 *.egg-info/
+performance_tests/dumps
 .installed.cfg
 *.egg
 MANIFEST
