@@ -31,12 +31,9 @@ jobs:
     timeout-minutes: 30
     env:
       TEST_NODEID: ${{ github.event.inputs.TEST }}
-    outputs:
-      test_name: ${{ steps.vars.outputs.test_name }}
     steps:
       - name: Set test variables
-        id: vars
-        run: echo "test_name=${TEST_NODEID##*::}" >> "$GITHUB_OUTPUT"
+        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
 
       - name: Check out repository
         uses: actions/checkout@v4
@@ -63,20 +60,34 @@ jobs:
         run: pytest "${{ github.event.inputs.TEST }}" --alluredir=./allure-results
 
       - name: Add allure information
-        working-directory: allure-results
         if: always()
         run: |
-          echo GIT_BRANCH=${{ github.head_ref || github.ref_name }} >> environment.properties
-          echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
-          echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
-          echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
-          echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
-          echo TEST_NAME=${{ steps.vars.outputs.test_name }} >> environment.properties
+          mkdir -p allure-results
+          {
+            echo "GIT_BRANCH=${{ github.head_ref || github.ref_name }}"
+            echo "GIT_COMMIT_ID=${{ github.sha }}"
+            echo "GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD)"
+            echo "GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD)"
+            echo "GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD)"
+            echo "TEST_NAME=${TEST_NAME}"
+            echo "TEST_NODEID=${TEST_NODEID}"
+          } >> allure-results/environment.properties
+          cat > allure-results/executor.json <<EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "url": "https://github.com/${{ github.repository }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildName": "Run #${{ github.run_number }} - ${TEST_NAME}",
+            "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
+          }
+          EOF
         continue-on-error: true
 
       - name: Upload Allure results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: allure-results
           path: allure-results/
@@ -84,7 +95,7 @@ jobs:
 
       - name: Upload locust reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: locust-reports
           path: performance_tests/scenarios/**/report.html
@@ -97,8 +108,6 @@ jobs:
     if: always()
     needs: [run-tests]
     runs-on: ubuntu-latest
-    env:
-      TEST_NAME: ${{ needs.run-tests.outputs.test_name }}
     steps:
       - name: Download Allure results
         uses: actions/download-artifact@v4
@@ -106,57 +115,68 @@ jobs:
           name: allure-results
           path: allure-results
 
-      - name: Get Allure history
+      - name: Get previous report (for history)
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
 
-      - name: Generate Allure report with history
-        uses: simple-elf/allure-report-action@master
-        with:
-          allure_results: allure-results
-          allure_history: allure-history
-          keep_reports: 50
-          subfolder: ${{ env.TEST_NAME }}
-        continue-on-error: true
+      - name: Restore Allure history
+        run: |
+          mkdir -p allure-results/history
+          if [ -d "gh-pages/history" ]; then
+            cp -r gh-pages/history/. allure-results/history/ || true
+          fi
 
-      - name: Upload Allure history
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Allure commandline
+        run: |
+          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
+          tar -xzf allure.tgz
+          sudo mv allure-2.30.0 /opt/allure
+          echo "/opt/allure/bin" >> "$GITHUB_PATH"
+
+      - name: Generate Allure report
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-history
-          path: allure-history/
+          name: allure-report
+          path: allure-report/
 
   publish-report:
     if: always()
     needs: [run-tests, generate-report]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      TEST_NAME: ${{ needs.run-tests.outputs.test_name }}
     steps:
-      - name: Download Allure history
+      - name: Download Allure report
         uses: actions/download-artifact@v4
         with:
-          name: allure-history
-          path: allure-history
+          name: allure-report
+          path: allure-report
 
-      - name: Commit Allure report
+      - name: Deploy Allure report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.CI_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
+          publish_dir: allure-report
+          force_orphan: true
         continue-on-error: true
 
       - name: Add link to report in Summary
         if: always()
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${TEST_NAME}/index.html"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Test: \`${TEST_NAME}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Report (with history): [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: \`${{ github.event.inputs.TEST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Report (with history/trend): [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
