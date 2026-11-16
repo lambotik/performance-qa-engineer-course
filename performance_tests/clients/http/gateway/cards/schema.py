@@ -1,8 +1,7 @@
 from datetime import date
 from enum import StrEnum
-from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, UUID4
 
 
 class CardType(StrEnum):
@@ -31,7 +30,7 @@ class CardSchema(BaseModel):
     cvv: str
     type: CardType
     status: CardStatus
-    account_id: str | UUID = Field(alias="accountId")
+    account_id: str | UUID4 = Field(alias="accountId")
     card_number: str = Field(alias="cardNumber")
     card_holder: str = Field(alias="cardHolder")
     expiry_date: date = Field(alias="expiryDate")
@@ -44,8 +43,8 @@ class IssueVirtualCardRequestSchema(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True)
 
-    user_id: str | UUID = Field(alias="userId")
-    account_id: str | UUID = Field(alias="accountId")
+    user_id: str | UUID4 = Field(alias="userId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class IssueVirtualCardResponseSchema(BaseModel):
@@ -61,8 +60,8 @@ class IssuePhysicalCardRequestSchema(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True)
 
-    user_id: str | UUID = Field(alias="userId")
-    account_id: str | UUID = Field(alias="accountId")
+    user_id: str | UUID4 = Field(alias="userId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class IssuePhysicalCardResponseSchema(BaseModel):

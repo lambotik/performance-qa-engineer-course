@@ -1,7 +1,6 @@
-from uuid import UUID
-
 from httpx import Response, QueryParams
 from locust.env import Environment
+from pydantic import UUID4
 
 from performance_tests.clients.http.client import (
     HTTPClient,
@@ -39,7 +38,7 @@ class OperationsGatewayHTTPClient(HTTPClient):
         Клиент для взаимодействия с /api/v1/operations сервиса http-gateway.
         """
 
-    def get_operation_api(self, operation_id: str | UUID) -> Response:
+    def get_operation_api(self, operation_id: str | UUID4) -> Response:
         """
         Получает информацию об операции по её идентификатору.
 
@@ -51,7 +50,7 @@ class OperationsGatewayHTTPClient(HTTPClient):
             extensions=HTTPClientExtensions(route=f"{APIRoutes.OPERATIONS}/{{operation_id}}")
         )
 
-    def get_operation_receipt_api(self, operation_id: str | UUID) -> Response:
+    def get_operation_receipt_api(self, operation_id: str | UUID4) -> Response:
         """
         Получает чек по заданной операции.
 
@@ -172,58 +171,58 @@ class OperationsGatewayHTTPClient(HTTPClient):
             json=request.model_dump(mode='json', by_alias=True)
         )
 
-    def get_operation(self, operation_id: str | UUID) -> GetOperationResponseSchema:
+    def get_operation(self, operation_id: str | UUID4) -> GetOperationResponseSchema:
         response = self.get_operation_api(operation_id)
         return GetOperationResponseSchema.model_validate_json(response.text)
 
-    def get_operation_receipt(self, operation_id: str | UUID) -> GetOperationReceiptResponseSchema:
+    def get_operation_receipt(self, operation_id: str | UUID4) -> GetOperationReceiptResponseSchema:
         response = self.get_operation_receipt_api(operation_id)
         return GetOperationReceiptResponseSchema.model_validate_json(response.text)
 
-    def get_operations(self, account_id: str | UUID) -> GetOperationsResponseSchema:
+    def get_operations(self, account_id: str | UUID4) -> GetOperationsResponseSchema:
         query = GetOperationsQuerySchema(account_id=account_id)
         response = self.get_operations_api(query)
         return GetOperationsResponseSchema.model_validate_json(response.text)
 
-    def get_operations_summary(self, account_id: str | UUID) -> GetOperationsSummaryResponseSchema:
+    def get_operations_summary(self, account_id: str | UUID4) -> GetOperationsSummaryResponseSchema:
         query = GetOperationsSummaryQuerySchema(account_id=account_id)
         response = self.get_operations_summary_api(query)
         return GetOperationsSummaryResponseSchema.model_validate_json(response.text)
 
-    def make_fee_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakeFeeOperationResponseSchema:
+    def make_fee_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakeFeeOperationResponseSchema:
         request = MakeFeeOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_fee_operation_api(request)
         return MakeFeeOperationResponseSchema.model_validate_json(response.text)
 
-    def make_top_up_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakeTopUpOperationResponseSchema:
+    def make_top_up_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakeTopUpOperationResponseSchema:
         request = MakeTopUpOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_top_up_operation_api(request)
         return MakeTopUpOperationResponseSchema.model_validate_json(response.text)
 
-    def make_cashback_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakeCashbackOperationResponseSchema:
+    def make_cashback_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakeCashbackOperationResponseSchema:
         request = MakeCashbackOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_cashback_operation_api(request)
         return MakeCashbackOperationResponseSchema.model_validate_json(response.text)
 
-    def make_transfer_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakeTransferOperationResponseSchema:
+    def make_transfer_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakeTransferOperationResponseSchema:
         request = MakeTransferOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_transfer_operation_api(request)
         return MakeTransferOperationResponseSchema.model_validate_json(response.text)
 
-    def make_purchase_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakePurchaseOperationResponseSchema:
+    def make_purchase_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakePurchaseOperationResponseSchema:
         request = MakePurchaseOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_purchase_operation_api(request)
         return MakePurchaseOperationResponseSchema.model_validate_json(response.text)
 
-    def make_bill_payment_operation(self, card_id: str | UUID, account_id: str | UUID) -> MakeBillPaymentOperationResponseSchema:
+    def make_bill_payment_operation(self, card_id: str | UUID4, account_id: str | UUID4) -> MakeBillPaymentOperationResponseSchema:
         request = MakeBillPaymentOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_bill_payment_operation_api(request)
         return MakeBillPaymentOperationResponseSchema.model_validate_json(response.text)
 
     def make_cash_withdrawal_operation(
             self,
-            card_id: str | UUID,
-            account_id: str | UUID
+            card_id: str | UUID4,
+            account_id: str | UUID4
     ) -> MakeCashWithdrawalOperationResponseSchema:
         request = MakeCashWithdrawalOperationRequestSchema(card_id=card_id, account_id=account_id)
         response = self.make_cash_withdrawal_operation_api(request)

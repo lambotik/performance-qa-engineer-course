@@ -1,8 +1,6 @@
-import uuid
 from enum import Enum
-from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, UUID4
 
 from performance_tests.clients.http.gateway.cards.schema import CardSchema
 
@@ -11,7 +9,7 @@ class Account(BaseModel):
     """Схема счёта."""
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str | UUID = Field(..., description="Account identifier")
+    id: str | UUID4 = Field(..., description="Account identifier")
     type: str = Field(..., description="Account type")
     cards: list[CardSchema] = Field(..., description="List of cards")
     status: str = Field(..., description="Account status")
@@ -37,7 +35,7 @@ class GetAccountsQuerySchema(BaseModel):
     Структура данных для получения списка счетов пользователя.
     """
     model_config = ConfigDict(populate_by_name=True)
-    user_id: str | UUID = Field(..., alias="userId", description="User Id")
+    user_id: str | UUID4 = Field(..., alias="userId", description="User Id")
 
 
 class OpenDepositAccountRequestSchema(BaseModel):
@@ -45,7 +43,7 @@ class OpenDepositAccountRequestSchema(BaseModel):
     Структура данных для открытия депозитного счета.
     """
     model_config = ConfigDict(populate_by_name=True)
-    user_id: str | UUID = Field(..., alias="userId", description="User Id")
+    user_id: str | UUID4 = Field(..., alias="userId", description="User Id")
 
 
 class OpenSavingsAccountRequestSchema(BaseModel):
@@ -53,7 +51,7 @@ class OpenSavingsAccountRequestSchema(BaseModel):
     Структура данных для открытия сберегательного счета.
     """
     model_config = ConfigDict(populate_by_name=True)
-    user_id: str | UUID = Field(..., alias="userId", description="User Id")
+    user_id: str | UUID4 = Field(..., alias="userId", description="User Id")
 
 
 class OpenSavingsAccountResponseSchema(BaseModel):
@@ -68,7 +66,7 @@ class OpenDebitCardAccountRequestSchema(BaseModel):
     Структура данных для открытия дебетового счета.
     """
     model_config = ConfigDict(populate_by_name=True)
-    user_id: str | UUID = Field(..., alias="userId", description="User Id")
+    user_id: str | UUID4 = Field(..., alias="userId", description="User Id")
 
 
 class OpenDebitCardAccountResponseSchema(BaseModel):
@@ -83,4 +81,4 @@ class OpenCreditCardAccountRequestSchema(BaseModel):
     Структура данных для открытия кредитного счета.
     """
     model_config = ConfigDict(populate_by_name=True)
-    user_id: str | UUID = Field(..., alias="userId", description="User Id")
+    user_id: str | UUID4 = Field(..., alias="userId", description="User Id")

@@ -1,7 +1,6 @@
-from uuid import UUID
-
 from httpx import Response
 from locust.env import Environment
+from pydantic import UUID4
 
 from performance_tests.clients.http.client import HTTPClient, build_gateway_http_client, \
     build_gateway_locust_http_client
@@ -41,12 +40,12 @@ class CardsGatewayHTTPClient(HTTPClient):
         )
 
 
-    def issue_virtual_card(self, user_id: str | UUID, account_id: UUID) -> IssueVirtualCardResponseSchema:
+    def issue_virtual_card(self, user_id: str | UUID4, account_id: UUID4) -> IssueVirtualCardResponseSchema:
         request = IssueVirtualCardRequestSchema(user_id=user_id, account_id=account_id)
         response = self.issue_virtual_card_api(request)
         return IssueVirtualCardResponseSchema.model_validate_json(response.text)
 
-    def issue_physical_card(self, user_id: str | UUID, account_id: str) -> IssuePhysicalCardResponseSchema:
+    def issue_physical_card(self, user_id: str | UUID4, account_id: str) -> IssuePhysicalCardResponseSchema:
         request = IssuePhysicalCardRequestSchema(user_id=user_id, account_id=account_id)
         response = self.issue_physical_card_api(request)
         return IssuePhysicalCardResponseSchema.model_validate_json(response.text)

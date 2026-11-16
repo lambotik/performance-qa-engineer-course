@@ -1,7 +1,6 @@
-from uuid import UUID
-
 from httpx import Response, QueryParams
 from locust.env import Environment
+from pydantic import UUID4
 
 from performance_tests.clients.http.client import (
     HTTPClient,
@@ -92,27 +91,27 @@ class AccountsGatewayHTTPClient(HTTPClient):
             json=request.model_dump(mode='json', by_alias=True)
         )
 
-    def get_accounts(self, user_id: str | UUID) -> GetAccountsResponseSchema:
+    def get_accounts(self, user_id: str | UUID4) -> GetAccountsResponseSchema:
         query = GetAccountsQuerySchema(user_id=user_id)
         response = self.get_accounts_api(query)
         return GetAccountsResponseSchema.model_validate_json(response.text)
 
-    def open_deposit_account(self, user_id: str | UUID) -> OpenDepositAccountResponseSchema:
+    def open_deposit_account(self, user_id: str | UUID4) -> OpenDepositAccountResponseSchema:
         request = OpenDepositAccountRequestSchema(user_id=user_id)
         response = self.open_deposit_account_api(request)
         return OpenDepositAccountResponseSchema.model_validate_json(response.text)
 
-    def open_savings_account(self, user_id: str | UUID) -> OpenSavingsAccountResponseSchema:
+    def open_savings_account(self, user_id: str | UUID4) -> OpenSavingsAccountResponseSchema:
         request = OpenSavingsAccountRequestSchema(user_id=user_id)
         response = self.open_savings_account_api(request)
         return OpenSavingsAccountResponseSchema.model_validate_json(response.text)
 
-    def open_debit_card_account(self, user_id: str | UUID) -> OpenDebitCardAccountResponseSchema:
+    def open_debit_card_account(self, user_id: str | UUID4) -> OpenDebitCardAccountResponseSchema:
         request = OpenDebitCardAccountRequestSchema(user_id=user_id)
         response = self.open_debit_card_account_api(request)
         return OpenDebitCardAccountResponseSchema.model_validate_json(response.text)
 
-    def open_credit_card_account(self, user_id: str | UUID) -> OpenCreditCardAccountResponseSchema:
+    def open_credit_card_account(self, user_id: str | UUID4) -> OpenCreditCardAccountResponseSchema:
         request = OpenCreditCardAccountRequestSchema(user_id=user_id)
         response = self.open_credit_card_account_api(request)
         return OpenCreditCardAccountResponseSchema.model_validate_json(response.text)

@@ -1,8 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
-from uuid import UUID
 
-from pydantic import BaseModel, Field, HttpUrl, ConfigDict
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict, UUID4
 
 from performance_tests.tools.fakers import fake
 
@@ -34,7 +33,7 @@ class OperationSchema(BaseModel):
     card_id: str = Field(alias="cardId")
     category: str = fake.category()
     created_at: datetime = Field(alias="createdAt")
-    account_id: str | UUID = Field(alias="accountId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class OperationReceiptSchema(BaseModel):
@@ -67,7 +66,7 @@ class GetOperationsQuerySchema(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True)
 
-    account_id: str | UUID = Field(alias="accountId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class GetOperationsResponseSchema(BaseModel):
@@ -83,7 +82,7 @@ class GetOperationsSummaryQuerySchema(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True)
 
-    account_id: str | UUID = Field(alias="accountId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class GetOperationsSummaryResponseSchema(BaseModel):
@@ -108,8 +107,8 @@ class MakeOperationRequestSchema(BaseModel):
 
     status: OperationStatus = Field(default_factory=lambda: fake.enum(OperationStatus))
     amount: float = Field(default_factory=fake.amount)
-    card_id: str | UUID = Field(alias="cardId")
-    account_id: str | UUID = Field(alias="accountId")
+    card_id: str | UUID4 = Field(alias="cardId")
+    account_id: str | UUID4 = Field(alias="accountId")
 
 
 class MakeFeeOperationRequestSchema(MakeOperationRequestSchema):

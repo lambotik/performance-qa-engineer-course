@@ -1,7 +1,6 @@
-from uuid import UUID
-
 from httpx import Response
 from locust.env import Environment
+from pydantic import UUID4
 
 from performance_tests.clients.http.client import (
     HTTPClient,
@@ -19,7 +18,7 @@ class UsersGatewayHTTPClient(HTTPClient):
     Клиент для взаимодействия с /api/v1/users сервиса http-gateway.
     """
 
-    def get_user_api(self, user_id: str | UUID) -> Response:
+    def get_user_api(self, user_id: str | UUID4) -> Response:
         """
         Получить данные пользователя по его user_id.
 
@@ -41,7 +40,7 @@ class UsersGatewayHTTPClient(HTTPClient):
         """
         return self.post(APIRoutes.USERS, json=request.model_dump(mode='json', by_alias=True))
 
-    def get_user(self, user_id: str | UUID) -> GetUserResponseSchema:
+    def get_user(self, user_id: str | UUID4) -> GetUserResponseSchema:
         response = self.get_user_api(user_id)
         return GetUserResponseSchema.model_validate_json(response.text)
 
