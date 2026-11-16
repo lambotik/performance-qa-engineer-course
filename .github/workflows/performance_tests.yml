@@ -55,7 +55,6 @@ jobs:
       # 5. Запускаем только необходимые сервисы для тестов: grpc-gateway, http-gateway, grpc-mock, http-mock
       - name: Start test services
         run: docker compose -f docker-compose.ci.yaml up -d --build
-        working-directory: performance-qa-engineer-course
 
       # 6. Устанавливаем зависимости, включая Locust и все библиотеки, нужные для запуска сценария
       - name: Install dependencies
@@ -85,4 +84,3 @@ jobs:
       - name: Stop test services
         if: always()
         run: docker compose -f docker-compose.ci.yaml down -v
-        working-directory: performance-qa-engineer-course
