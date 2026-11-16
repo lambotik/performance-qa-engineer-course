@@ -107,55 +107,47 @@ jobs:
     needs: [run-tests]
     runs-on: ubuntu-latest
     steps:
-      - name: Add allure information
-        working-directory: allure-results
-        if: always()
-        run: |
-          echo GIT_BRANCH=${{ github.head_ref || github.ref_name }}  >> environment.properties
-          echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
-          echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
-          echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
-          echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
-          echo CHROME_VERSION=$(google-chrome --product-version) >> environment.properties
-        continue-on-error: true
-
-        # Новый шаг: сохраняем результаты тестов как артефакт (использует upload-artifact@v7)
-      - name: Upload Allure results
-        if: always()
-        uses: actions/upload-artifact@v7
+      # 1. Скачиваем результаты, которые сгенерировал предыдущий Job
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
         with:
           name: allure-results
-          path: allure-results/
-          retention-days: 7
+          path: allure-results
 
+      # 2. Скачиваем отчеты Locust (если они нужны в этом же деплое)
+      - name: Download locust reports
+        uses: actions/download-artifact@v4
+        with:
+          name: locust-reports
+          path: locust-reports
+        continue-on-error: true
+
+      # 3. Чекаутим ветку gh-pages для сохранения истории
       - name: Get Allure history
         uses: actions/checkout@v4
-        if: always()
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
 
+      # 4. Генерируем Allure отчет
       - name: Allure Report action
         uses: simple-elf/allure-report-action@master
-        if: always()
         with:
           allure_results: allure-results
           allure_history: allure-history
           keep_reports: 50
-        continue-on-error: true
 
+      # 5. Публикуем на GitHub Pages
       - name: Commit Allure report
-        if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
-          personal_token: ${{ secrets.CI_TOKEN }}
+          github_token: ${{ secrets.CI_TOKEN }} # Или ваш CI_TOKEN
           publish_branch: gh-pages
           publish_dir: allure-history
-        continue-on-error: true
 
+      # 6. Ссылка в Summary
       - name: Add link to report in Summary
-        if: always()
         run: |
           REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
