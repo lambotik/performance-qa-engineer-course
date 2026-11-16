@@ -31,9 +31,12 @@ jobs:
     timeout-minutes: 30
     env:
       TEST_NODEID: ${{ github.event.inputs.TEST }}
+    outputs:
+      test_name: ${{ steps.vars.outputs.test_name }}
     steps:
       - name: Set test variables
-        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
+        id: vars
+        run: echo "test_name=${TEST_NODEID##*::}" >> "$GITHUB_OUTPUT"
 
       - name: Check out repository
         uses: actions/checkout@v4
@@ -68,7 +71,7 @@ jobs:
           echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
           echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
           echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
-          echo TEST_NAME=${{ env.TEST_NAME }} >> environment.properties
+          echo TEST_NAME=${{ steps.vars.outputs.test_name }} >> environment.properties
         continue-on-error: true
 
       - name: Upload Allure results
@@ -90,17 +93,28 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.ci.yaml down -v
 
+  generate-report:
+    if: always()
+    needs: [run-tests]
+    runs-on: ubuntu-latest
+    env:
+      TEST_NAME: ${{ needs.run-tests.outputs.test_name }}
+    steps:
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
       - name: Get Allure history
         uses: actions/checkout@v4
-        if: always()
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
 
-      - name: Allure Report action
+      - name: Generate Allure report with history
         uses: simple-elf/allure-report-action@master
-        if: always()
         with:
           allure_results: allure-results
           allure_history: allure-history
@@ -108,8 +122,29 @@ jobs:
           subfolder: ${{ env.TEST_NAME }}
         continue-on-error: true
 
-      - name: Commit Allure report
+      - name: Upload Allure history
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history
+          path: allure-history/
+
+  publish-report:
+    if: always()
+    needs: [run-tests, generate-report]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TEST_NAME: ${{ needs.run-tests.outputs.test_name }}
+    steps:
+      - name: Download Allure history
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-history
+          path: allure-history
+
+      - name: Commit Allure report
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.CI_TOKEN }}
@@ -120,8 +155,8 @@ jobs:
       - name: Add link to report in Summary
         if: always()
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.TEST_NAME }}/index.html"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${TEST_NAME}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Test: \`${{ env.TEST_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: \`${TEST_NAME}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Report (with history): [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
