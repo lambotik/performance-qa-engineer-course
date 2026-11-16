@@ -64,13 +64,11 @@ jobs:
         run: |
           mkdir -p allure-results
           {
-            echo "GIT_BRANCH=${{ github.head_ref || github.ref_name }}"
-            echo "GIT_COMMIT_ID=${{ github.sha }}"
-            echo "GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD)"
-            echo "GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD)"
-            echo "GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD)"
-            echo "TEST_NAME=${TEST_NAME}"
-            echo "TEST_NODEID=${TEST_NODEID}"
+            echo GIT_BRANCH=${{ github.head_ref || github.ref_name }}  >> environment.properties
+            echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
+            echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
+            echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
+            echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
           } >> allure-results/environment.properties
           cat > allure-results/executor.json <<EOF
           {
@@ -109,67 +107,51 @@ jobs:
     needs: [run-tests]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Allure results
-        uses: actions/download-artifact@v4
+      - name: Add allure information
+        working-directory: allure-results
+        if: always()
+        run: |
+          echo GIT_BRANCH=${{ github.head_ref || github.ref_name }}  >> environment.properties
+          echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
+          echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
+          echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
+          echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
+          echo CHROME_VERSION=$(google-chrome --product-version) >> environment.properties
+        continue-on-error: true
+
+        # Новый шаг: сохраняем результаты тестов как артефакт (использует upload-artifact@v7)
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
           name: allure-results
-          path: allure-results
+          path: allure-results/
+          retention-days: 7
 
-      - name: Get previous report (for history)
+      - name: Get Allure history
         uses: actions/checkout@v4
+        if: always()
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
 
-      - name: Restore Allure history
-        run: |
-          mkdir -p allure-results/history
-          if [ -d "gh-pages/history" ]; then
-            cp -r gh-pages/history/. allure-results/history/ || true
-          fi
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install Allure commandline
-        run: |
-          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
-          tar -xzf allure.tgz
-          sudo mv allure-2.30.0 /opt/allure
-          echo "/opt/allure/bin" >> "$GITHUB_PATH"
-
-      - name: Generate Allure report
-        run: allure generate allure-results -o allure-report --clean
-
-      - name: Upload Allure report
+      - name: Allure Report action
+        uses: simple-elf/allure-report-action@master
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: allure-report
-          path: allure-report/
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 50
+        continue-on-error: true
 
-  publish-report:
-    if: always()
-    needs: [run-tests, generate-report]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Allure report
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report
-
-      - name: Deploy Allure report to GitHub Pages
+      - name: Commit Allure report
+        if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.CI_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-report
-          force_orphan: true
+          publish_dir: allure-history
         continue-on-error: true
 
       - name: Add link to report in Summary
