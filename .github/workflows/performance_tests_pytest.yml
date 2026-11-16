@@ -85,13 +85,29 @@ jobs:
           name: allure-results
           path: ./allure-results
 
-      - name: Generate and publish Allure report to GitHub Pages
-        uses: simple-elf/allure-report-action@v1.7
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          allure_results: allure-results
-          gh_pages: gh-pages
-          allure_report: allure-report
-          subfolder: allure/${{ github.run_id }}
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Allure commandline
+        run: |
+          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
+          tar -xzf allure.tgz
+          sudo mv allure-2.30.0 /opt/allure
+          echo "/opt/allure/bin" >> "$GITHUB_PATH"
+
+      - name: Generate Allure report
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Deploy Allure report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          keep_files: true
+          publish_dir: allure-report
+          destination_dir: allure/${{ github.run_id }}
 
       - name: Add link to report in Summary
         run: |
