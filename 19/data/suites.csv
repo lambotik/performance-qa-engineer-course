@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Нагрузочный тест gRPC gateway: получение документов существующего пользователя.","102628","gRPC Gateway: existing user get documents","performance_tests.tests","2026-11-16","passed","2026-11-16","","test_load_scenarios","",""
