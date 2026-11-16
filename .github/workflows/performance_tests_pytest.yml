@@ -63,13 +63,12 @@ jobs:
         if: always()
         run: |
           mkdir -p allure-results
-          {
-            echo GIT_BRANCH=${{ github.head_ref || github.ref_name }}  >> environment.properties
-            echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
-            echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
-            echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
-            echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
-          }
+          echo "GIT_BRANCH=${{ github.head_ref || github.ref_name }}" >> allure-results/environment.properties
+          echo "GIT_COMMIT_ID=${{ github.sha }}" >> allure-results/environment.properties
+          echo "GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD)" >> allure-results/environment.properties
+          echo "GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD)" >> allure-results/environment.properties
+          echo "GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD)" >> allure-results/environment.properties
+          echo "TEST_NAME=${{ env.TEST_NAME }}" >> allure-results/environment.properties
         continue-on-error: true
 
       - name: Upload Allure results
@@ -95,15 +94,17 @@ jobs:
     if: always()
     needs: [run-tests]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      # 1. Скачиваем результаты, которые сгенерировал предыдущий Job
+      # 1. Скачиваем результаты тестов
       - name: Download Allure results
         uses: actions/download-artifact@v4
         with:
           name: allure-results
           path: allure-results
 
-      # 2. Скачиваем отчеты Locust (если они нужны в этом же деплое)
+      # 2. Скачиваем отчеты Locust
       - name: Download locust reports
         uses: actions/download-artifact@v4
         with:
@@ -111,7 +112,7 @@ jobs:
           path: locust-reports
         continue-on-error: true
 
-      # 3. Чекаутим ветку gh-pages для сохранения истории
+      # 3. Чекаутим ветку gh-pages для сохранения истории (тренды)
       - name: Get Allure history
         uses: actions/checkout@v4
         with:
@@ -119,23 +120,43 @@ jobs:
           path: gh-pages
         continue-on-error: true
 
-      # 4. Генерируем Allure отчет
-      - name: Allure Report action
-        uses: simple-elf/allure-report-action@master
-        with:
-          allure_results: allure-results
-          allure_history: allure-history
-          keep_reports: 50
+      # 4. Восстанавливаем историю Allure (если она есть в gh-pages)
+      - name: Restore Allure history
+        run: |
+          mkdir -p allure-results/history
+          if [ -d "gh-pages/history" ]; then
+            cp -r "gh-pages/history/." "allure-results/history/" || true
+          fi
 
-      # 5. Публикуем на GitHub Pages
-      - name: Commit Allure report
+      # 5. Устанавливаем Java (необходима для Allure CLI)
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 6. Устанавливаем Allure CLI версии 2.24.0
+      - name: Install Allure commandline
+        run: |
+          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+          tar -xzf allure.tgz
+          sudo mv allure-2.24.0 /opt/allure
+          echo "/opt/allure/bin" >> "$GITHUB_PATH"
+
+      # 7. Генерируем HTML-отчет Allure
+      - name: Generate Allure report
+        run: allure generate allure-results -o allure-report --clean
+
+      # 8. Публикуем отчет на GitHub Pages
+      - name: Deploy Allure report
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.CI_TOKEN }} # Или ваш CI_TOKEN
+          github_token: ${{ secrets.CI_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
+          publish_dir: allure-report
+          keep_files: true
 
-      # 6. Ссылка в Summary
+      # 9. Добавляем ссылку в Summary запуска
       - name: Add link to report in Summary
         run: |
           REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
