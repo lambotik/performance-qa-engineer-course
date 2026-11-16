@@ -51,7 +51,6 @@ jobs:
       # 4. Сборка базового образа, на котором основаны gateway и mock-сервисы
       - name: Build base Docker image
         run: docker build -f Dockerfile.base -t base-service .
-        working-directory: performance-qa-engineer-course
 
       # 5. Запускаем только необходимые сервисы для тестов: grpc-gateway, http-gateway, grpc-mock, http-mock
       - name: Start test services
