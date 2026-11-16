@@ -78,12 +78,35 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TEST_NODEID: ${{ github.event.inputs.TEST }}
     steps:
+      - name: Set report variables
+        run: |
+          TEST_NAME="${TEST_NODEID##*::}"
+          echo "TEST_NAME=$TEST_NAME" >> "$GITHUB_ENV"
+          echo "LATEST_DIR=allure/$TEST_NAME" >> "$GITHUB_ENV"
+          echo "RUN_DIR=allure/runs/${{ github.run_id }}/$TEST_NAME" >> "$GITHUB_ENV"
+
       - name: Download allure results
         uses: actions/download-artifact@v4
         with:
           name: allure-results
           path: ./allure-results
+
+      - name: Checkout gh-pages (for history)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Restore Allure history
+        run: |
+          mkdir -p allure-results/history
+          if [ -d "gh-pages/${LATEST_DIR}/history" ]; then
+            cp -r "gh-pages/${LATEST_DIR}/history/." "allure-results/history/" || true
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -101,17 +124,29 @@ jobs:
       - name: Generate Allure report
         run: allure generate allure-results -o allure-report --clean
 
-      - name: Deploy Allure report to GitHub Pages
+      - name: Deploy run report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           keep_files: true
           publish_dir: allure-report
-          destination_dir: allure/${{ github.run_id }}
+          destination_dir: ${{ env.RUN_DIR }}
 
-      - name: Add link to report in Summary
+      - name: Deploy latest report with history to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          keep_files: true
+          publish_dir: allure-report
+          destination_dir: ${{ env.LATEST_DIR }}
+
+      - name: Add links to reports in Summary
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure/${{ github.run_id }}/index.html"
+          BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          LATEST_URL="${BASE_URL}/${LATEST_DIR}/index.html"
+          RUN_URL="${BASE_URL}/${RUN_DIR}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "👉 [Открыть Allure-отчет]($REPORT_URL)" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: \`${TEST_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest (with history): [open](${LATEST_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "- This run: [open](${RUN_URL})" >> $GITHUB_STEP_SUMMARY
