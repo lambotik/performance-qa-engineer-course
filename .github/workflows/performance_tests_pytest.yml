@@ -69,23 +69,12 @@ jobs:
             echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
             echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
             echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
-          } >> allure-results/environment.properties
-          cat > allure-results/executor.json <<EOF
-          {
-            "name": "GitHub Actions",
-            "type": "github",
-            "url": "https://github.com/${{ github.repository }}",
-            "buildOrder": ${{ github.run_number }},
-            "buildName": "Run #${{ github.run_number }} - ${TEST_NAME}",
-            "buildUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-            "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
           }
-          EOF
         continue-on-error: true
 
       - name: Upload Allure results
         if: always()
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v5
         with:
           name: allure-results
           path: allure-results/
@@ -93,7 +82,7 @@ jobs:
 
       - name: Upload locust reports
         if: always()
-        uses: actions/upload-artifact@v8
+        uses: actions/upload-artifact@v5
         with:
           name: locust-reports
           path: performance_tests/scenarios/**/report.html
