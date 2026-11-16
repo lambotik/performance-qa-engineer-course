@@ -29,7 +29,12 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TEST_NODEID: ${{ github.event.inputs.TEST }}
     steps:
+      - name: Set test variables
+        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
+
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -54,16 +59,25 @@ jobs:
       - name: Run selected load scenario test
         run: pytest "${{ github.event.inputs.TEST }}" --alluredir=./allure-results
 
-      - name: Stop test services
+      - name: Add allure information
+        working-directory: allure-results
         if: always()
-        run: docker compose -f docker-compose.ci.yaml down -v
+        run: |
+          echo GIT_BRANCH=${{ github.head_ref || github.ref_name }} >> environment.properties
+          echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
+          echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
+          echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
+          echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
+          echo TEST_NAME=${{ env.TEST_NAME }} >> environment.properties
+        continue-on-error: true
 
-      - name: Upload allure results
+      - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
-          path: ./allure-results
+          path: allure-results/
+          retention-days: 7
 
       - name: Upload locust reports
         if: always()
@@ -72,81 +86,42 @@ jobs:
           name: locust-reports
           path: performance_tests/scenarios/**/report.html
 
-  publish-allure-report:
-    if: always()
-    needs: [run-tests]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      TEST_NODEID: ${{ github.event.inputs.TEST }}
-    steps:
-      - name: Set report variables
-        run: |
-          TEST_NAME="${TEST_NODEID##*::}"
-          echo "TEST_NAME=$TEST_NAME" >> "$GITHUB_ENV"
-          echo "LATEST_DIR=allure/$TEST_NAME" >> "$GITHUB_ENV"
-          echo "RUN_DIR=allure/runs/${{ github.run_id }}/$TEST_NAME" >> "$GITHUB_ENV"
+      - name: Stop test services
+        if: always()
+        run: docker compose -f docker-compose.ci.yaml down -v
 
-      - name: Download allure results
-        uses: actions/download-artifact@v4
-        with:
-          name: allure-results
-          path: ./allure-results
-
-      - name: Checkout gh-pages (for history)
+      - name: Get Allure history
         uses: actions/checkout@v4
-        continue-on-error: true
+        if: always()
         with:
           ref: gh-pages
           path: gh-pages
+        continue-on-error: true
 
-      - name: Restore Allure history
-        run: |
-          mkdir -p allure-results/history
-          if [ -d "gh-pages/${LATEST_DIR}/history" ]; then
-            cp -r "gh-pages/${LATEST_DIR}/history/." "allure-results/history/" || true
-          fi
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Allure Report action
+        uses: simple-elf/allure-report-action@master
+        if: always()
         with:
-          distribution: temurin
-          java-version: '17'
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 50
+          subfolder: ${{ env.TEST_NAME }}
+        continue-on-error: true
 
-      - name: Install Allure commandline
-        run: |
-          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
-          tar -xzf allure.tgz
-          sudo mv allure-2.30.0 /opt/allure
-          echo "/opt/allure/bin" >> "$GITHUB_PATH"
-
-      - name: Generate Allure report
-        run: allure generate allure-results -o allure-report --clean
-
-      - name: Deploy run report to GitHub Pages
+      - name: Commit Allure report
+        if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          keep_files: true
-          publish_dir: allure-report
-          destination_dir: ${{ env.RUN_DIR }}
+          personal_token: ${{ secrets.CI_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+        continue-on-error: true
 
-      - name: Deploy latest report with history to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          keep_files: true
-          publish_dir: allure-report
-          destination_dir: ${{ env.LATEST_DIR }}
-
-      - name: Add links to reports in Summary
+      - name: Add link to report in Summary
+        if: always()
         run: |
-          BASE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
-          LATEST_URL="${BASE_URL}/${LATEST_DIR}/index.html"
-          RUN_URL="${BASE_URL}/${RUN_DIR}/index.html"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.TEST_NAME }}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Test: \`${TEST_NAME}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Latest (with history): [open](${LATEST_URL})" >> $GITHUB_STEP_SUMMARY
-          echo "- This run: [open](${RUN_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "- Test: \`${{ env.TEST_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Report (with history): [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
