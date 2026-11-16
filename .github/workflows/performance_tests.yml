@@ -85,3 +85,13 @@ jobs:
       - name: Stop test services
         if: always()
         run: docker compose -f docker-compose.ci.yaml down -v
+
+      # 11. Добавляем красивую ссылку в Summary запуска
+      - name: Add link to report in Summary
+        run: |
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_id }}/index.html"
+          echo "### 📊 Результаты нагрузочного тестирования" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Отчет для запуска \`${{ github.run_id }}\` успешно сгенерирован." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "👉 [Открыть HTML-отчет]($REPORT_URL)" >> $GITHUB_STEP_SUMMARY
