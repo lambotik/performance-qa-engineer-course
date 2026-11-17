@@ -133,12 +133,12 @@ jobs:
           java-version: '21'
 
       # 5. Устанавливаем НОВУЮ версию Allure CLI (2.30.0)
-      - name: Install Allure commandline
-        run: |
-          curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
-          tar -xzf allure.tgz
-          sudo mv allure-2.30.0 /opt/allure
-          echo "/opt/allure/bin" >> "$GITHUB_PATH"
+      - name: Allure Report action
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: allure-results
+          allure_history: allure-history
+          keep_reports: 50
 
       # 6. Генерируем HTML-отчет Allure сразу в подпапку с именем теста
       - name: Generate Allure report

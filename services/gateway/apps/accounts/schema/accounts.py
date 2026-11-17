@@ -1,4 +1,3 @@
-import uuid
 from typing import Self
 
 from fastapi import Query
@@ -19,10 +18,10 @@ class AccountViewSchema(BaseSchema):
 
 
 class GetAccountsQuerySchema(QuerySchema):
-    user_id: uuid.UUID
+    user_id: UUID4
 
     @classmethod
-    async def as_query(cls, user_id: uuid.UUID = Query(alias="userId")) -> Self:
+    async def as_query(cls, user_id: UUID4 = Query(alias="userId")) -> Self:
         return GetAccountsQuerySchema(user_id=user_id)
 
 
@@ -31,7 +30,7 @@ class GetAccountsResponseSchema(BaseSchema):
 
 
 class OpenSavingsAccountRequestSchema(BaseSchema):
-    user_id: uuid.UUID
+    user_id: UUID4
 
 
 class OpenSavingsAccountResponseSchema(BaseSchema):
@@ -39,7 +38,7 @@ class OpenSavingsAccountResponseSchema(BaseSchema):
 
 
 class OpenDepositAccountRequestSchema(BaseSchema):
-    user_id: uuid.UUID
+    user_id: UUID4
 
 
 class OpenDepositAccountResponseSchema(BaseSchema):
@@ -47,7 +46,7 @@ class OpenDepositAccountResponseSchema(BaseSchema):
 
 
 class OpenDebitCardAccountRequestSchema(BaseSchema):
-    user_id: uuid.UUID
+    user_id: UUID4
 
 
 class OpenDebitCardAccountResponseSchema(BaseSchema):
@@ -55,7 +54,7 @@ class OpenDebitCardAccountResponseSchema(BaseSchema):
 
 
 class OpenCreditCardAccountRequestSchema(BaseSchema):
-    user_id: uuid.UUID
+    user_id: UUID4
 
 
 class OpenCreditCardAccountResponseSchema(BaseSchema):
