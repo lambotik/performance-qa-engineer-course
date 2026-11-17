@@ -1,1 +1,1 @@
-[{"uid":"aacd6f3faffc4d01","name":"gRPC Gateway: existing user make purchase operation","time":{"start":1794897079086,"stop":1794897294841,"duration":215755},"status":"passed","severity":"normal"}]
+[{"uid":"b857dc48ed06688e","name":"gRPC Gateway: new user issue physical card","time":{"start":1794897682576,"stop":1794897743103,"duration":60527},"status":"passed","severity":"normal"}]

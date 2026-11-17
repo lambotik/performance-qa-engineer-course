@@ -1,2 +1,2 @@
 "Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
-"passed","Tue Nov 17 06:31:19 UTC 2026","Tue Nov 17 06:34:54 UTC 2026","215755","performance_tests.tests","test_load_scenarios","","","","gRPC Gateway: existing user make purchase operation","Нагрузочный тест gRPC gateway: покупка существующим пользователем."
+"passed","Tue Nov 17 06:41:22 UTC 2026","Tue Nov 17 06:42:23 UTC 2026","60527","performance_tests.tests","test_load_scenarios","","","","gRPC Gateway: new user issue physical card","Нагрузочный тест gRPC gateway: выпуск физической карты для нового пользователя."
