@@ -1,40 +1,36 @@
-name: Performance Tests (Pytest + Allure)
+name: Performance Tests
 
 on:
   workflow_dispatch:
     inputs:
-      TEST:
-        type: choice
-        required: true
-        description: 'Pytest test (single load scenario)'
-        default: 'performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_existing_user_get_documents'
+      SCENARIO:
+        type: 'choice'
+        default: './performance_tests/scenarios/grpc/gateway/new_user_get_accounts/v1.0.conf'
         options:
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_existing_user_get_documents
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_existing_user_get_operations
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_existing_user_make_purchase_operation
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_new_user_get_accounts
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_new_user_get_documents
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_new_user_issue_physical_card
-          - performance_tests/tests/test_load_scenarios.py::test_grpc_gateway_new_user_make_top_up_operation
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_existing_user_get_documents
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_existing_user_get_operations
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_existing_user_issue_virtual_card
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_existing_user_make_purchase_operation
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_get_accounts
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_get_documents
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_issue_physical_card
-          - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_make_top_up_operation
+          - ./performance_tests/scenarios/grpc/gateway/existing_user_get_documents/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/existing_user_get_operations/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/existing_user_issue_virtual_card/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/existing_user_make_purchase_operation/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/new_user_get_accounts/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/new_user_get_documents/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/new_user_issue_physical_card/v1.0.conf
+          - ./performance_tests/scenarios/grpc/gateway/new_user_make_top_up_operation/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/existing_user_get_documents/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/existing_user_get_operations/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/existing_user_issue_virtual_card/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/existing_user_make_purchase_operation/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/new_user_get_accounts/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/new_user_get_documents/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/new_user_issue_physical_card/v1.0.conf
+          - ./performance_tests/scenarios/http/gateway/new_user_make_top_up_operation/v1.0.conf
+        required: true
+        description: 'Locust config file'
 
 jobs:
   run-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      TEST_NODEID: ${{ github.event.inputs.TEST }}
     steps:
-      - name: Set test variables
-        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
-
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -54,110 +50,53 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e ./protos/gen
-          pip install allure-pytest
 
-      - name: Run selected load scenario test
-        run: pytest "${{ github.event.inputs.TEST }}" --alluredir=./allure-results
+      - name: Create report directory
+        run: mkdir -p ./reports/${{ github.run_id }}
 
-      - name: Add allure information
-        if: always()
-        run: |
-          mkdir -p allure-results
-          echo "GIT_BRANCH=${{ github.head_ref || github.ref_name }}" >> allure-results/environment.properties
-          echo "GIT_COMMIT_ID=${{ github.sha }}" >> allure-results/environment.properties
-          echo "GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD)" >> allure-results/environment.properties
-          echo "GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD)" >> allure-results/environment.properties
-          echo "GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD)" >> allure-results/environment.properties
-          echo "TEST_NAME=${{ env.TEST_NAME }}" >> allure-results/environment.properties
-        continue-on-error: true
-
-      - name: Upload Allure results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results
-          path: allure-results/
-          retention-days: 7
-
-      - name: Upload locust reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: locust-reports
-          path: performance_tests/scenarios/**/report.html
+      - name: Run load tests and generate HTML report
+        run: locust --config=${{ github.event.inputs.SCENARIO }} --html=./reports/${{ github.run_id }}/index.html
 
       - name: Stop test services
         if: always()
         run: docker compose -f docker-compose.ci.yaml down -v
 
-  generate-report:
+      # Сохраняем папку reports как артефакт, чтобы передать её в следующий Job
+      - name: Upload reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: ./reports/
+
+  publish-report:
     if: always()
-    needs: [run-tests]
+    needs: [ run-tests ]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-    env:
-      TEST_NODEID: ${{ github.event.inputs.TEST }}
+      contents: write # Нужно для пуша в gh-pages
     steps:
-      - name: Set report variables
-        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
-
-      # 1. Скачиваем результаты тестов
-      - name: Download Allure results
+      # Скачиваем артефакт с отчетами из предыдущего Job
+      - name: Download reports artifact
         uses: actions/download-artifact@v4
         with:
-          name: allure-results
-          path: allure-results
+          name: performance-reports
+          path: ./reports
 
-      # 2. Чекаутим ветку gh-pages для сохранения истории (тренды)
-      - name: Get Allure history
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-        continue-on-error: true
-
-      # 3. Восстанавливаем историю Allure (если она есть в gh-pages для этого теста)
-      - name: Restore Allure history
-        run: |
-          mkdir -p allure-results/history
-          if [ -d "gh-pages/${TEST_NAME}/history" ]; then
-            cp -r "gh-pages/${TEST_NAME}/history/." "allure-results/history/" || true
-          fi
-
-      # 4. Устанавливаем Java (необходима для Allure CLI)
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      # 5. Устанавливаем НОВУЮ версию Allure CLI (2.30.0)
-      - name: Allure Report action
-        uses: simple-elf/allure-report-action@master
-        with:
-          allure_results: allure-results
-          allure_history: allure-history
-          keep_reports: 50
-
-      # 6. Генерируем HTML-отчет Allure сразу в подпапку с именем теста
-      - name: Generate Allure report
-        run: allure generate allure-results -o allure-report/${TEST_NAME} --clean
-
-      # 7. Публикуем папку allure-report (внутри которой лежит подпапка с тестом) на GitHub Pages
-      - name: Deploy Allure report
+      - name: Deploy HTML report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.CI_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-report
+          github_token: ${{ secrets.CI_TOKEN }} # Используем встроенный токен
           keep_files: true
+          publish_dir: reports
+          publish_branch: gh-pages
 
-      # 8. Добавляем ссылку в Summary запуска
+      # Добавляем красивую ссылку в Summary запуска
       - name: Add link to report in Summary
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${TEST_NAME}/index.html"
-          echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_id }}/index.html"
+          echo "### 📊 Результаты нагрузочного тестирования" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Test: \`${{ github.event.inputs.TEST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Report: [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "Отчет для запуска \`${{ github.run_id }}\` успешно сгенерирован." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "👉 [Открыть HTML-отчет]($REPORT_URL)" >> $GITHUB_STEP_SUMMARY
