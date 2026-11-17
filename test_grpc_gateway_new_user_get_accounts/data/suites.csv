@@ -1,0 +1,2 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"passed","Tue Nov 17 06:50:20 UTC 2026","Tue Nov 17 06:51:21 UTC 2026","60510","performance_tests.tests","test_load_scenarios","","","","gRPC Gateway: new user get accounts","Нагрузочный тест gRPC gateway: получение счетов нового пользователя."
