@@ -25,9 +25,12 @@ on:
           - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_issue_physical_card
           - performance_tests/tests/test_load_scenarios.py::test_http_gateway_new_user_make_top_up_operation
 
+permissions:
+  contents: write
+
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       TEST_NODEID: ${{ github.event.inputs.TEST }}
@@ -58,17 +61,18 @@ jobs:
 
       - name: Run selected load scenario test
         run: pytest "${{ github.event.inputs.TEST }}" --alluredir=./allure-results
+        continue-on-error: true
 
       - name: Add allure information
+        working-directory: allure-results
         if: always()
         run: |
-          mkdir -p allure-results
-          echo "GIT_BRANCH=${{ github.head_ref || github.ref_name }}" >> allure-results/environment.properties
-          echo "GIT_COMMIT_ID=${{ github.sha }}" >> allure-results/environment.properties
-          echo "GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD)" >> allure-results/environment.properties
-          echo "GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD)" >> allure-results/environment.properties
-          echo "GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD)" >> allure-results/environment.properties
-          echo "TEST_NAME=${{ env.TEST_NAME }}" >> allure-results/environment.properties
+          echo GIT_BRANCH=${{ github.head_ref || github.ref_name }} >> environment.properties
+          echo GIT_COMMIT_ID=${{ github.sha }} >> environment.properties
+          echo GIT_COMMIT_MESSAGE=$(git show -s --format=%s HEAD) >> environment.properties
+          echo GIT_COMMIT_AUTHOR_NAME=$(git show -s --format='%ae' HEAD) >> environment.properties
+          echo GIT_COMMIT_TIME=$(git show -s --format=%ci HEAD) >> environment.properties
+          echo TEST_NAME=${{ env.TEST_NAME }} >> environment.properties
         continue-on-error: true
 
       - name: Upload Allure results
@@ -93,15 +97,8 @@ jobs:
   generate-report:
     if: always()
     needs: [run-tests]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      TEST_NODEID: ${{ github.event.inputs.TEST }}
+    runs-on: ubuntu-24.04
     steps:
-      - name: Set report variables
-        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
-
       - name: Download Allure results
         uses: actions/download-artifact@v4
         with:
@@ -110,35 +107,29 @@ jobs:
 
       - name: Get Allure history
         uses: actions/checkout@v4
+        if: always()
         with:
           ref: gh-pages
           path: gh-pages
         continue-on-error: true
 
-      - name: Restore Allure history
-        run: |
-          mkdir -p allure-results/history
-          if [ -d "gh-pages/${TEST_NAME}/history" ]; then
-            cp -r "gh-pages/${TEST_NAME}/history/." "allure-results/history/" || true
-          fi
-
-      # Заменяем ручную установку Java и CLI на готовое действие
       - name: Allure Report action
         uses: simple-elf/allure-report-action@master
+        if: always()
         with:
           allure_results: allure-results
           allure_history: allure-history
           keep_reports: 50
-          allure_version: '2.30.0'
+        continue-on-error: true
 
-      # Публикуем результат в корень gh-pages
-      - name: Deploy Allure report
+      - name: Commit Allure report
+        if: always()
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.CI_TOKEN }}
+          personal_token: ${{ secrets.CI_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-history
-          keep_files: true
+        continue-on-error: true
 
       - name: Add link to report in Summary
         run: |
