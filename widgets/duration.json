@@ -1,1 +1,1 @@
-[{"uid":"c81f8c601674ca74","name":"gRPC Gateway: existing user get documents","time":{"start":1794872678613,"stop":1794872784157,"duration":105544},"status":"passed","severity":"normal"}]
+[{"uid":"aacd6f3faffc4d01","name":"gRPC Gateway: existing user make purchase operation","time":{"start":1794897079086,"stop":1794897294841,"duration":215755},"status":"passed","severity":"normal"}]
