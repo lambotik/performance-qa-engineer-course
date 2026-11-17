@@ -96,7 +96,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TEST_NODEID: ${{ github.event.inputs.TEST }}
     steps:
+      - name: Set report variables
+        run: echo "TEST_NAME=${TEST_NODEID##*::}" >> "$GITHUB_ENV"
+
       # 1. Скачиваем результаты тестов
       - name: Download Allure results
         uses: actions/download-artifact@v4
@@ -104,15 +109,7 @@ jobs:
           name: allure-results
           path: allure-results
 
-      # 2. Скачиваем отчеты Locust
-      - name: Download locust reports
-        uses: actions/download-artifact@v4
-        with:
-          name: locust-reports
-          path: locust-reports
-        continue-on-error: true
-
-      # 3. Чекаутим ветку gh-pages для сохранения истории (тренды)
+      # 2. Чекаутим ветку gh-pages для сохранения истории (тренды)
       - name: Get Allure history
         uses: actions/checkout@v4
         with:
@@ -120,22 +117,22 @@ jobs:
           path: gh-pages
         continue-on-error: true
 
-      # 4. Восстанавливаем историю Allure (если она есть в gh-pages)
+      # 3. Восстанавливаем историю Allure (если она есть в gh-pages для этого теста)
       - name: Restore Allure history
         run: |
           mkdir -p allure-results/history
-          if [ -d "gh-pages/history" ]; then
-            cp -r "gh-pages/history/." "allure-results/history/" || true
+          if [ -d "gh-pages/${TEST_NAME}/history" ]; then
+            cp -r "gh-pages/${TEST_NAME}/history/." "allure-results/history/" || true
           fi
 
-      # 5. Устанавливаем Java (необходима для Allure CLI)
+      # 4. Устанавливаем Java (необходима для Allure CLI)
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 6. Устанавливаем Allure CLI версии 2.24.0
+      # 5. Устанавливаем Allure CLI
       - name: Install Allure commandline
         run: |
           curl -fsSL -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
@@ -143,11 +140,11 @@ jobs:
           sudo mv allure-2.24.0 /opt/allure
           echo "/opt/allure/bin" >> "$GITHUB_PATH"
 
-      # 7. Генерируем HTML-отчет Allure
+      # 6. Генерируем HTML-отчет Allure сразу в подпапку с именем теста
       - name: Generate Allure report
-        run: allure generate allure-results -o allure-report --clean
+        run: allure generate allure-results -o allure-report/${TEST_NAME} --clean
 
-      # 8. Публикуем отчет на GitHub Pages
+      # 7. Публикуем папку allure-report (внутри которой лежит подпапка с тестом) на GitHub Pages
       - name: Deploy Allure report
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -156,11 +153,11 @@ jobs:
           publish_dir: allure-report
           keep_files: true
 
-      # 9. Добавляем ссылку в Summary запуска
+      # 8. Добавляем ссылку в Summary запуска
       - name: Add link to report in Summary
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${TEST_NAME}/index.html"
           echo "### 📊 Allure report (load scenario)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Test: \`${{ github.event.inputs.TEST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- Report (with history/trend): [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "- Report: [open](${REPORT_URL})" >> $GITHUB_STEP_SUMMARY
