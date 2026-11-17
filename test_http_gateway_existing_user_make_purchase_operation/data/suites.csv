@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Нагрузочный тест HTTP gateway: покупка существующим пользователем.","217116","HTTP Gateway: existing user make purchase operation","performance_tests.tests","Tue Nov 17 07:53:41 UTC 2026","failed","Tue Nov 17 07:57:19 UTC 2026","","test_load_scenarios","",""
