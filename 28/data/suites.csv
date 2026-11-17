@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Нагрузочный тест gRPC gateway: покупка существующим пользователем.","210306","gRPC Gateway: existing user make purchase operation","performance_tests.tests","2026-11-17","passed","2026-11-17","","test_load_scenarios","",""
