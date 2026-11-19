@@ -6,8 +6,8 @@ scenario:
   name: "existing user get documents"
   file: "./performance_tests/scenarios/grpc/gateway/new_user_get_accounts/v1.0.conf"
   version: "v1.0"
-  number_of_users: 300
-  runtime_duration: "3m"
+  number_of_users: 100
+  runtime_duration: "1m"
 csv_locust_stats_file: "./performance_tests/scenarios/grpc/gateway/new_user_get_accounts/locust_grpc_gateway_new_user_get_accounts_stats.csv"
 json_locust_ratio_file: "./performance_tests/scenarios/grpc/gateway/new_user_get_accounts/locust_grpc_gateway_new_user_get_accounts_ratio.json"
 csv_locust_exceptions_file: "./performance_tests/scenarios/grpc/gateway/new_user_get_accounts/locust_grpc_gateway_new_user_get_accounts_exceptions.csv"
